@@ -1,0 +1,6 @@
+{
+  "name": "Audit Claim",
+  "description": "Sistem Audit Claim & Dashboard Monitoring untuk monitoring pengajuan, lead time, dan kendala claim dealer secara online dengan sinkronisasi cloud.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

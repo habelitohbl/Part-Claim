@@ -1,0 +1,1789 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistem Audit Claim & Dashboard Monitoring</title>
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- SheetJS (xlsx) -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-indigo-100 selection:text-indigo-800">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- Top Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <!-- Brand / Title -->
+        <div class="flex items-start sm:items-center gap-3">
+          <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md shadow-indigo-200 shrink-0">
+            <i data-lucide="clipboard-check" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">DASHBOARD AUDIT CLAIM</h1>
+              <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">II26-HabelImprovement</span>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Monitoring Pengajuan, Lead Time & Kendala Claim Dealer</p>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="openClaimModal()" class="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs sm:text-sm font-semibold px-3.5 py-2.5 rounded-xl shadow-sm transition cursor-pointer">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Input Claim Baru</span>
+          </button>
+
+          <label class="inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs sm:text-sm font-medium px-3 py-2.5 rounded-xl shadow-xs transition cursor-pointer">
+            <i data-lucide="upload" class="w-4 h-4 text-slate-500"></i>
+            <span>Import Excel (.xlsx)</span>
+            <input type="file" id="excel-import-input" accept=".xlsx, .xls" class="hidden" onchange="handleExcelImport(event)" />
+          </label>
+
+          <button onclick="exportToExcel()" class="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-medium px-3 py-2.5 rounded-xl shadow-xs transition cursor-pointer">
+            <i data-lucide="download" class="w-4 h-4"></i>
+            <span>Export Excel (.xlsx)</span>
+          </button>
+
+          <button onclick="openResetConfirmModal()" class="inline-flex items-center gap-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs sm:text-sm font-medium px-3 py-2.5 rounded-xl transition cursor-pointer" title="Kembalikan ke 61 data awal">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">Reset Data Awal</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex items-center gap-1 sm:gap-2 mt-4 pt-3 border-t border-slate-100 overflow-x-auto no-scrollbar">
+        <button id="tab-btn-dashboard" onclick="switchTab('dashboard')" class="tab-btn inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition whitespace-nowrap cursor-pointer bg-indigo-50 text-indigo-700">
+          <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+          <span>Dashboard Overview</span>
+        </button>
+        <button id="tab-btn-claims" onclick="switchTab('claims')" class="tab-btn inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition whitespace-nowrap cursor-pointer">
+          <i data-lucide="table-2" class="w-4 h-4"></i>
+          <span>Data Claim & Input</span>
+          <span id="badge-total-claims" class="ml-1 text-xs font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">61</span>
+        </button>
+        <button id="tab-btn-master" onclick="switchTab('master')" class="tab-btn inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition whitespace-nowrap cursor-pointer">
+          <i data-lucide="database" class="w-4 h-4"></i>
+          <span>Master Katalog Part & Dealer</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- ==================== TAB 1: DASHBOARD OVERVIEW ==================== -->
+    <section id="view-dashboard" class="space-y-6">
+      
+      <!-- 6 KPI Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <!-- Total Pengajuan -->
+        <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Pengajuan</span>
+            <div class="p-2 rounded-xl bg-blue-50 text-blue-600">
+              <i data-lucide="file-text" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-3 flex items-baseline gap-2">
+            <span id="kpi-total-pengajuan" class="text-2xl font-extrabold text-slate-900">61</span>
+            <span class="text-xs text-slate-400">transaksi</span>
+          </div>
+        </div>
+
+        <!-- Belum Adjust -->
+        <div onclick="filterClaimsByStatus('Not Adjusted')" class="bg-white rounded-2xl p-4 border border-amber-200/80 shadow-xs hover:shadow-md transition cursor-pointer group">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-amber-700">Belum Adjust</span>
+            <div class="p-2 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition">
+              <i data-lucide="clock" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-3 flex items-baseline gap-2">
+            <span id="kpi-belum-adjust" class="text-2xl font-extrabold text-amber-600">19</span>
+            <span id="kpi-belum-pct" class="text-xs font-medium text-amber-600/80">(31.1%)</span>
+          </div>
+        </div>
+
+        <!-- Sudah Adjust -->
+        <div onclick="filterClaimsByStatus('Adjusted')" class="bg-white rounded-2xl p-4 border border-emerald-200/80 shadow-xs hover:shadow-md transition cursor-pointer group">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-emerald-700">Sudah Adjust</span>
+            <div class="p-2 rounded-xl bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100 transition">
+              <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-3 flex items-baseline gap-2">
+            <span id="kpi-sudah-adjust" class="text-2xl font-extrabold text-emerald-600">42</span>
+            <span id="kpi-sudah-pct" class="text-xs font-medium text-emerald-600/80">(68.9%)</span>
+          </div>
+        </div>
+
+        <!-- Total Part -->
+        <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Part</span>
+            <div class="p-2 rounded-xl bg-violet-50 text-violet-600">
+              <i data-lucide="package" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-3 flex items-baseline gap-2">
+            <span id="kpi-total-part" class="text-2xl font-extrabold text-slate-900">63</span>
+            <span class="text-xs text-slate-400">unit qty</span>
+          </div>
+        </div>
+
+        <!-- Nilai Claim -->
+        <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Nilai Claim</span>
+            <div class="p-2 rounded-xl bg-indigo-50 text-indigo-600">
+              <i data-lucide="banknote" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-3">
+            <span id="kpi-nilai-claim" class="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">Rp 24.325.511</span>
+          </div>
+        </div>
+
+        <!-- Avg Lead Time -->
+        <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:shadow-md transition">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Avg. Lead Time</span>
+            <div class="p-2 rounded-xl bg-rose-50 text-rose-600">
+              <i data-lucide="timer" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div class="mt-3 flex items-baseline gap-1.5">
+            <span id="kpi-avg-leadtime" class="text-2xl font-extrabold text-slate-900">0.0</span>
+            <span class="text-xs font-medium text-slate-500">hari</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Bar Chart: Nilai Claim & Belum Adjust per Dealer Aktif -->
+        <div class="lg:col-span-7 bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Nilai Claim & Kasus Belum Adjust per Dealer Aktif</h2>
+              <p class="text-xs text-slate-500">Perbandingan total nilai claim (Rp) dan antrian belum adjust</p>
+            </div>
+            <span class="text-xs font-medium px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 self-start">Dealer Aktif</span>
+          </div>
+          <div class="relative flex-1 min-h-[300px] w-full">
+            <canvas id="dealerChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Doughnut Chart: Distribusi Kendala Audit Claim -->
+        <div class="lg:col-span-5 bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col">
+          <div class="mb-4">
+            <h2 class="text-base font-bold text-slate-900">Distribusi Kendala Audit Claim</h2>
+            <p class="text-xs text-slate-500">Proporsi status penyelesaian dan kendala lapangan</p>
+          </div>
+          <div class="relative flex-1 min-h-[300px] w-full flex items-center justify-center">
+            <canvas id="kendalaChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recap Tables Row -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Tabel Rekapitulasi Dealer -->
+        <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
+          <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Rekapitulasi Claim per Dealer</h2>
+              <p class="text-xs text-slate-500">Klik baris dealer untuk melihat detail transaksi claim</p>
+            </div>
+            <!-- Toggle Dealer Filter -->
+            <div class="inline-flex rounded-xl bg-slate-100 p-1 self-start">
+              <button id="btn-dealer-active" onclick="setDealerRecapMode('active')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-indigo-700 shadow-xs transition cursor-pointer">
+                Hanya Dealer Aktif
+              </button>
+              <button id="btn-dealer-all" onclick="setDealerRecapMode('all')" class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 transition cursor-pointer">
+                Semua 34 Dealer
+              </button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto max-h-[420px]">
+            <table class="w-full text-left border-collapse">
+              <thead class="bg-slate-50 sticky top-0 z-10 border-b border-slate-200">
+                <tr>
+                  <th class="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500">Dealer</th>
+                  <th class="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Jumlah Part</th>
+                  <th class="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Nilai Claim (Rp)</th>
+                  <th class="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-center">Belum Adjust</th>
+                </tr>
+              </thead>
+              <tbody id="recap-dealer-tbody" class="divide-y divide-slate-100 text-sm">
+                <!-- Populated by JS -->
+              </tbody>
+              <tfoot class="bg-slate-50 font-bold text-slate-900 border-t-2 border-slate-200 sticky bottom-0">
+                <tr>
+                  <td class="py-3 px-4 text-xs uppercase">Grand Total</td>
+                  <td id="recap-dealer-total-part" class="py-3 px-4 text-right">63</td>
+                  <td id="recap-dealer-total-amount" class="py-3 px-4 text-right">Rp 24.325.511</td>
+                  <td id="recap-dealer-total-unadjusted" class="py-3 px-4 text-center text-amber-600">19</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tabel Rekapitulasi Kendala -->
+        <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
+          <div class="p-5 border-b border-slate-100">
+            <h2 class="text-base font-bold text-slate-900">Rekapitulasi Kategori Kendala</h2>
+            <p class="text-xs text-slate-500">Klik kendala untuk memfilter transaksi terkait</p>
+          </div>
+
+          <div class="overflow-x-auto flex-1">
+            <table class="w-full text-left border-collapse">
+              <thead class="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th class="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500">Kategori Kendala</th>
+                  <th class="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Kasus</th>
+                  <th class="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Persentase</th>
+                </tr>
+              </thead>
+              <tbody id="recap-kendala-tbody" class="divide-y divide-slate-100 text-sm">
+                <!-- Populated by JS -->
+              </tbody>
+              <tfoot class="bg-slate-50 font-bold text-slate-900 border-t-2 border-slate-200">
+                <tr>
+                  <td class="py-3 px-4 text-xs uppercase">Total Keseluruhan</td>
+                  <td id="recap-kendala-total-count" class="py-3 px-4 text-right">61</td>
+                  <td class="py-3 px-4 text-right">100%</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: DATA CLAIM & INPUT ==================== -->
+    <section id="view-claims" class="hidden space-y-4">
+      
+      <!-- Filter & Search Bar -->
+      <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+          <!-- Search Input -->
+          <div class="lg:col-span-4 relative">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+            <input type="text" id="filter-search" oninput="renderClaimsTable()" placeholder="Cari No, Part Number, Nama Part, Dealer..." class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition" />
+          </div>
+
+          <!-- Filter Dealer -->
+          <div class="lg:col-span-2">
+            <select id="filter-dealer" onchange="renderClaimsTable()" class="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+              <option value="">Semua Dealer</option>
+            </select>
+          </div>
+
+          <!-- Filter Status -->
+          <div class="lg:col-span-2">
+            <select id="filter-status" onchange="renderClaimsTable()" class="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+              <option value="">Semua Status</option>
+              <option value="Not Adjusted">Not Adjusted (Belum)</option>
+              <option value="Adjusted">Adjusted (Sudah)</option>
+            </select>
+          </div>
+
+          <!-- Filter Kendala -->
+          <div class="lg:col-span-3">
+            <select id="filter-kendala" onchange="renderClaimsTable()" class="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+              <option value="">Semua Kendala</option>
+            </select>
+          </div>
+
+          <!-- Clear Filter Button -->
+          <div class="lg:col-span-1 flex">
+            <button onclick="resetClaimFilters()" class="w-full inline-flex items-center justify-center gap-1 px-3 py-2.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer" title="Reset Filter">
+              <i data-lucide="filter-x" class="w-4 h-4"></i>
+              <span class="lg:hidden">Reset Filter</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Active Filter Info Bar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs text-slate-500">
+          <div>
+            Menampilkan <span id="filtered-count" class="font-bold text-slate-800">61</span> dari <span id="total-records-count" class="font-bold text-slate-800">61</span> data transaksi
+          </div>
+          <div class="flex items-center gap-4">
+            <span>Subtotal Nilai: <strong id="filtered-amount" class="text-indigo-700">Rp 24.325.511</strong></span>
+            <span>Subtotal Qty: <strong id="filtered-qty" class="text-slate-800">63</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Claims Data Table -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div class="overflow-x-auto max-h-[620px]">
+          <table class="w-full text-left border-collapse whitespace-nowrap">
+            <thead class="bg-slate-50 sticky top-0 z-10 border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-500">
+              <tr>
+                <th class="py-3.5 px-3 text-center">No</th>
+                <th class="py-3.5 px-3">Tgl Pengajuan</th>
+                <th class="py-3.5 px-3">Dealer</th>
+                <th class="py-3.5 px-3">Tgl Audit</th>
+                <th class="py-3.5 px-3">Part Number</th>
+                <th class="py-3.5 px-3">Nama Part</th>
+                <th class="py-3.5 px-3 text-center">Qty</th>
+                <th class="py-3.5 px-3 text-right">Order Amount</th>
+                <th class="py-3.5 px-3">Tgl Adjust</th>
+                <th class="py-3.5 px-3 text-center">Status</th>
+                <th class="py-3.5 px-3 text-right">Lead Time</th>
+                <th class="py-3.5 px-3">Kendala</th>
+                <th class="py-3.5 px-3 text-center sticky right-0 bg-slate-50 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)]">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="claims-tbody" class="divide-y divide-slate-100 text-xs sm:text-sm">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 3: MASTER KATALOG PART & DEALER ==================== -->
+    <section id="view-master" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Master Part Katalog -->
+        <div class="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
+          <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Master Katalog Part Number</h2>
+              <p class="text-xs text-slate-500">Referensi otomatis nama part dan harga satuan saat input claim baru</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="text" id="search-master-part" oninput="renderMasterTables()" placeholder="Cari part..." class="px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+          </div>
+
+          <!-- Quick Add Part Form -->
+          <form onsubmit="handleAddMasterPart(event)" class="p-4 bg-slate-50/70 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+            <div class="sm:col-span-3">
+              <input type="text" id="new-part-number" required placeholder="Part Number (mis. B6YH...)" class="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div class="sm:col-span-5">
+              <input type="text" id="new-part-name" required placeholder="Nama Part" class="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div class="sm:col-span-2">
+              <input type="number" id="new-part-price" min="0" step="any" placeholder="Harga Ref (Rp)" class="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div class="sm:col-span-2">
+              <button type="submit" class="w-full h-full inline-flex items-center justify-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-2 rounded-xl transition cursor-pointer">
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                <span>Simpan Part</span>
+              </button>
+            </div>
+          </form>
+
+          <div class="overflow-x-auto max-h-[480px]">
+            <table class="w-full text-left border-collapse">
+              <thead class="bg-slate-50 sticky top-0 border-b border-slate-200 text-xs font-bold uppercase text-slate-500">
+                <tr>
+                  <th class="py-3 px-4">Part Number</th>
+                  <th class="py-3 px-4">Nama Part</th>
+                  <th class="py-3 px-4 text-right">Harga Referensi (Rp)</th>
+                  <th class="py-3 px-4 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="master-parts-tbody" class="divide-y divide-slate-100 text-xs sm:text-sm">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Master Daftar Dealer -->
+        <div class="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
+          <div class="p-5 border-b border-slate-100">
+            <h2 class="text-base font-bold text-slate-900">Master Daftar Dealer (<span id="master-dealer-count">34</span>)</h2>
+            <p class="text-xs text-slate-500">Kode jaringan dealer resmi untuk pilihan input</p>
+          </div>
+
+          <!-- Quick Add Dealer Form -->
+          <form onsubmit="handleAddMasterDealer(event)" class="p-4 bg-slate-50/70 border-b border-slate-200 flex gap-2">
+            <input type="text" id="new-dealer-code" required placeholder="Kode Dealer (mis. TB XYZ)" class="flex-1 px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <button type="submit" class="inline-flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition cursor-pointer">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+              <span>Tambah</span>
+            </button>
+          </form>
+
+          <div class="overflow-y-auto max-h-[480px] p-4">
+            <div id="master-dealers-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-2">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== MODAL: FORM INPUT / EDIT CLAIM ==================== -->
+  <div id="claim-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="p-2 rounded-xl bg-indigo-100 text-indigo-700">
+            <i data-lucide="file-plus-2" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 id="claim-modal-title" class="text-base font-bold text-slate-900">Input Pengajuan Claim Baru</h3>
+            <p class="text-xs text-slate-500">Perhitungan Status, Lead Time & Estimasi Amount otomatis</p>
+          </div>
+        </div>
+        <button onclick="closeClaimModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Modal Form -->
+      <form id="claim-form" onsubmit="handleClaimFormSubmit(event)" class="p-6 space-y-4">
+        <input type="hidden" id="form-claim-no" />
+
+        <!-- Live Calculation Preview Banner -->
+        <div class="bg-indigo-50/80 border border-indigo-100 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium text-slate-600">Status Otomatis:</span>
+            <span id="preview-status-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">Not Adjusted</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium text-slate-600">Estimasi Lead Time:</span>
+            <span id="preview-leadtime-text" class="text-sm font-extrabold text-indigo-700">0 Hari</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <!-- Tanggal Pengajuan Claim -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Tgl Pengajuan Claim <span class="text-rose-500">*</span></label>
+            <input type="date" id="form-tgl-pengajuan" required onchange="updateFormPreviews()" class="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+
+          <!-- Dealer Selector -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Kode Dealer <span class="text-rose-500">*</span></label>
+            <input type="text" id="form-dealer" list="dealer-datalist" required placeholder="Pilih / ketik dealer..." class="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <datalist id="dealer-datalist"></datalist>
+          </div>
+
+          <!-- Tanggal Audit -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Tgl Audit <span class="text-rose-500">*</span></label>
+            <input type="date" id="form-tgl-audit" required class="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+        </div>
+
+        <!-- Smart Part Number & Nama Part -->
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-4">
+          <div class="sm:col-span-5">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Part Number <span class="text-rose-500">*</span></label>
+            <input type="text" id="form-part-number" list="part-datalist" required oninput="handlePartNumberInput(this.value)" placeholder="Pilih atau ketik baru..." class="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl uppercase font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <datalist id="part-datalist"></datalist>
+            <p id="part-catalog-hint" class="text-[11px] text-slate-400 mt-1">Ketik part baru untuk otomatis masuk katalog</p>
+          </div>
+
+          <div class="sm:col-span-7">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Part <span class="text-rose-500">*</span></label>
+            <input type="text" id="form-nama-part" required placeholder="Nama komponen part..." class="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <!-- Qty -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Qty (Unit) <span class="text-rose-500">*</span></label>
+            <input type="number" id="form-qty" min="1" value="1" required oninput="handleQtyChange()" class="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+
+          <!-- Order Amount -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Order Amount (Rp) <span class="text-rose-500">*</span></label>
+            <input type="number" id="form-order-amount" min="0" step="any" required placeholder="0" class="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+
+          <!-- Tanggal Adjust -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Tgl Adjust <span class="text-slate-400 font-normal">(Opsional)</span></label>
+            <input type="date" id="form-tgl-adjust" onchange="handleTglAdjustChange()" class="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+        </div>
+
+        <!-- Kendala -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Kendala / Keterangan Audit <span class="text-rose-500">*</span></label>
+          <select id="form-kendala-select" onchange="handleKendalaSelectChange()" class="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="Claim Complete">Claim Complete</option>
+            <option value="Verifikasi Part">Verifikasi Part</option>
+            <option value="Sudah Diinput, Menunggu Diadjust">Sudah Diinput, Menunggu Diadjust</option>
+            <option value="Dokumen Kurang">Dokumen Kurang</option>
+            <option value="Form Claim Tidak Lengkap">Form Claim Tidak Lengkap</option>
+            <option value="Salah kirim form claim, petugas claim tidak follow up ke dealer">Salah kirim form claim, petugas claim tidak follow up ke dealer</option>
+            <option value="__CUSTOM__">+ Tambah Kendala Kustom...</option>
+          </select>
+          <input type="text" id="form-kendala-custom" placeholder="Tuliskan keterangan kendala baru..." class="hidden mt-2 w-full px-3 py-2 text-sm bg-slate-50 border border-indigo-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+
+        <!-- Footer Buttons -->
+        <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-2.5">
+          <button type="button" onclick="closeClaimModal()" class="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition cursor-pointer">
+            Batal
+          </button>
+          <button type="submit" class="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-sm transition cursor-pointer">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            <span>Simpan Data Claim</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: CONFIRMATION DIALOG ==================== -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+      <div class="flex items-start gap-3">
+        <div class="p-2.5 rounded-xl bg-rose-100 text-rose-600 shrink-0">
+          <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 id="confirm-modal-title" class="text-base font-bold text-slate-900">Konfirmasi Tindakan</h3>
+          <p id="confirm-modal-desc" class="text-sm text-slate-600 mt-1">Apakah Anda yakin ingin melanjutkan?</p>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeConfirmModal()" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 transition cursor-pointer">Batal</button>
+        <button id="confirm-modal-action-btn" class="px-4 py-2 rounded-xl text-sm font-semibold bg-rose-600 hover:bg-rose-700 text-white transition cursor-pointer">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== JAVASCRIPT APPLICATION LOGIC ==================== -->
+  <script>
+    // 1. INITIAL DATASET (61 Transaksi Persis dari II26-HabelImprovement.xlsx)
+    const INITIAL_CLAIMS_DATA = [
+      {"no": 1, "tglPengajuan": "2026-06-24", "dealer": "TB BSK", "tglAudit": "2026-07-06", "partNumber": "B6YH58101100", "namaPart": "COMMUNICATION CONT. UNIT ASSY", "qty": 1, "orderAmount": 371000.0, "tglAdjust": "2026-07-28", "kendala": "Claim Complete"},
+      {"no": 2, "tglPengajuan": "2026-06-24", "dealer": "TB BSK", "tglAudit": "2026-07-06", "partNumber": "B6YH58101100", "namaPart": "COMMUNICATION CONT. UNIT ASSY", "qty": 1, "orderAmount": 371000.0, "tglAdjust": "2026-07-28", "kendala": "Claim Complete"},
+      {"no": 3, "tglPengajuan": "2026-06-24", "dealer": "TB BSK", "tglAudit": "2026-07-06", "partNumber": "B6YH58101100", "namaPart": "COMMUNICATION CONT. UNIT ASSY", "qty": 1, "orderAmount": 371000.0, "tglAdjust": "2026-10-14", "kendala": "Claim Complete"},
+      {"no": 4, "tglPengajuan": "2026-06-15", "dealer": "TB BSK", "tglAudit": "2026-07-06", "partNumber": "BEJF41100000", "namaPart": "FUEL TANK COMP. (BEJ1)", "qty": 1, "orderAmount": 235500.0, "tglAdjust": "2026-07-28", "kendala": "Claim Complete"},
+      {"no": 5, "tglPengajuan": "2026-08-05", "dealer": "TB BSK", "tglAudit": "2026-07-06", "partNumber": "931022081500", "namaPart": "OIL SEAL (2PH1)", "qty": 1, "orderAmount": 6581.8636, "tglAdjust": "2026-10-14", "kendala": "Claim Complete"},
+      {"no": 6, "tglPengajuan": "2026-08-05", "dealer": "TB BSK", "tglAudit": "2026-07-06", "partNumber": "931023280700", "namaPart": "OIL SEAL (2DP1)", "qty": 1, "orderAmount": 9213.0, "tglAdjust": "2026-10-14", "kendala": "Claim Complete"},
+      {"no": 7, "tglPengajuan": "2026-08-05", "dealer": "TB BSK", "tglAudit": "2026-07-06", "partNumber": "2DPE72112000", "namaPart": "GEAR, 1ST WHEEL (B2T2)", "qty": 1, "orderAmount": 127508.0, "tglAdjust": "2026-10-14", "kendala": "Claim Complete"},
+      {"no": 8, "tglPengajuan": "2026-08-05", "dealer": "TB BSK", "tglAudit": "2026-07-06", "partNumber": "2DPE74103100", "namaPart": "MAIN AXLE COMP. (2DP1)", "qty": 1, "orderAmount": 219638.0, "tglAdjust": "2026-10-14", "kendala": "Claim Complete"},
+      {"no": 9, "tglPengajuan": "2026-08-05", "dealer": "TB BSK", "tglAudit": "2026-07-06", "partNumber": "B65E61110100", "namaPart": "GEAR, PRIMARY DRIVE (BBP1)", "qty": 1, "orderAmount": 146671.0, "tglAdjust": "2026-10-14", "kendala": "Claim Complete"},
+      {"no": 10, "tglPengajuan": "2026-08-05", "dealer": "TB BSK", "tglAudit": "2026-07-06", "partNumber": "93306351Y800", "namaPart": "BEARING", "qty": 1, "orderAmount": 20637.0, "tglAdjust": "2026-10-14", "kendala": "Claim Complete"},
+      {"no": 11, "tglPengajuan": "2026-08-05", "dealer": "TB BSK", "tglAudit": "2026-07-06", "partNumber": "93306303YW00", "namaPart": "BEARING", "qty": 1, "orderAmount": 22111.0, "tglAdjust": "2026-10-14", "kendala": "Claim Complete"},
+      {"no": 12, "tglPengajuan": "2026-08-05", "dealer": "TB BSK", "tglAudit": "2026-07-06", "partNumber": "93306302YU00", "namaPart": "BEARING", "qty": 2, "orderAmount": 18242.0, "tglAdjust": "2026-10-14", "kendala": "Claim Complete"},
+      {"no": 13, "tglPengajuan": "2026-08-05", "dealer": "TB BSK", "tglAudit": "2026-07-06", "partNumber": "93306255YA00", "namaPart": "BEARING (B3F1)", "qty": 1, "orderAmount": 25059.0, "tglAdjust": "2026-10-14", "kendala": "Claim Complete"},
+      {"no": 14, "tglPengajuan": "2026-08-05", "dealer": "TB BSK", "tglAudit": "2026-07-06", "partNumber": "93306204XR00", "namaPart": "BEARING (2DP1)", "qty": 1, "orderAmount": 27823.0, "tglAdjust": "2026-10-14", "kendala": "Claim Complete"},
+      {"no": 15, "tglPengajuan": "2026-08-05", "dealer": "TB BSK", "tglAudit": "2026-07-06", "partNumber": "B6HE74210000", "namaPart": "AXLE, DRIVE (B6H1)", "qty": 1, "orderAmount": 197527.0, "tglAdjust": "2026-10-14", "kendala": "Claim Complete"},
+      {"no": 16, "tglPengajuan": "2026-07-11", "dealer": "TB PYK", "tglAudit": "2026-07-20", "partNumber": "B6YH58101100", "namaPart": "COMMUNICATION CONT. UNIT ASSY", "qty": 1, "orderAmount": 371000.0, "tglAdjust": "2026-07-28", "kendala": "Claim Complete"},
+      {"no": 17, "tglPengajuan": "2026-07-11", "dealer": "TB PYK", "tglAudit": "2026-07-20", "partNumber": "B6YH58101100", "namaPart": "COMMUNICATION CONT. UNIT ASSY", "qty": 1, "orderAmount": 371000.0, "tglAdjust": "2026-07-28", "kendala": "Claim Complete"},
+      {"no": 18, "tglPengajuan": "2026-07-11", "dealer": "TB PYK", "tglAudit": "2026-07-20", "partNumber": "B6YH58101100", "namaPart": "COMMUNICATION CONT. UNIT ASSY", "qty": 1, "orderAmount": 371000.0, "tglAdjust": "2026-07-28", "kendala": "Claim Complete"},
+      {"no": 19, "tglPengajuan": "2026-07-11", "dealer": "TB PYK", "tglAudit": "2026-07-20", "partNumber": "B6YH58101100", "namaPart": "COMMUNICATION CONT. UNIT ASSY", "qty": 1, "orderAmount": 371000.0, "tglAdjust": "2026-07-28", "kendala": "Claim Complete"},
+      {"no": 20, "tglPengajuan": "2026-07-11", "dealer": "TB PYK", "tglAudit": "2026-07-20", "partNumber": "B6YH58101300", "namaPart": "COMMUNICATION CONT. UNIT ASSY", "qty": 1, "orderAmount": 371000.0, "tglAdjust": "2026-07-28", "kendala": "Claim Complete"},
+      {"no": 21, "tglPengajuan": "2026-07-11", "dealer": "TB PYK", "tglAudit": "2026-07-20", "partNumber": "B6YH58101300", "namaPart": "COMMUNICATION CONT. UNIT ASSY", "qty": 1, "orderAmount": 371000.0, "tglAdjust": "2026-07-28", "kendala": "Claim Complete"},
+      {"no": 22, "tglPengajuan": "2026-07-11", "dealer": "TB PYK", "tglAudit": "2026-07-20", "partNumber": "B6YH58101300", "namaPart": "COMMUNICATION CONT. UNIT ASSY", "qty": 1, "orderAmount": 371000.0, "tglAdjust": "2026-07-28", "kendala": "Claim Complete"},
+      {"no": 23, "tglPengajuan": "2026-06-06", "dealer": "TB PYK", "tglAudit": "2026-07-20", "partNumber": "2DPWB0730000", "namaPart": "TOOL KIT", "qty": 1, "orderAmount": 11500.0, "tglAdjust": "2026-09-05", "kendala": "Claim Complete"},
+      {"no": 24, "tglPengajuan": "2026-06-06", "dealer": "TB PYK", "tglAudit": "2026-07-20", "partNumber": "2DPWB0730000", "namaPart": "TOOL KIT", "qty": 1, "orderAmount": 11500.0, "tglAdjust": "2026-09-05", "kendala": "Claim Complete"},
+      {"no": 25, "tglPengajuan": "2026-03-03", "dealer": "TB PYK", "tglAudit": "2026-07-20", "partNumber": "BN1H21000000", "namaPart": "BATTERY ASSY YTZ6V", "qty": 1, "orderAmount": 305500.0, "tglAdjust": "2026-07-28", "kendala": "Claim Complete"},
+      {"no": 26, "tglPengajuan": "2026-05-03", "dealer": "TB PYK", "tglAudit": "2026-07-20", "partNumber": "BN1H21000000", "namaPart": "BATTERY ASSY YTZ6V", "qty": 1, "orderAmount": 305500.0, "tglAdjust": "", "kendala": "Verifikasi Part"},
+      {"no": 27, "tglPengajuan": "2026-07-10", "dealer": "TB SP4", "tglAudit": "2026-07-27", "partNumber": "901090803400", "namaPart": "BOLT (ALFA,FRC1,Y125Z)", "qty": 1, "orderAmount": 21000.0, "tglAdjust": "2026-07-29", "kendala": "Claim Complete"},
+      {"no": 28, "tglPengajuan": "2026-06-01", "dealer": "TB SP4", "tglAudit": "2026-07-27", "partNumber": "B6YH58101100", "namaPart": "COMMUNICATION CONT. UNIT ASSY", "qty": 1, "orderAmount": 371000.0, "tglAdjust": "2026-07-29", "kendala": "Claim Complete"},
+      {"no": 29, "tglPengajuan": "2026-06-10", "dealer": "TB SP4", "tglAudit": "2026-07-27", "partNumber": "B6YH58101100", "namaPart": "COMMUNICATION CONT. UNIT ASSY", "qty": 1, "orderAmount": 371000.0, "tglAdjust": "2026-07-29", "kendala": "Claim Complete"},
+      {"no": 30, "tglPengajuan": "2026-07-02", "dealer": "TB SP4", "tglAudit": "2026-07-27", "partNumber": "B6YH58101100", "namaPart": "COMMUNICATION CONT. UNIT ASSY", "qty": 1, "orderAmount": 371000.0, "tglAdjust": "2026-09-05", "kendala": "Claim Complete"},
+      {"no": 31, "tglPengajuan": "2026-07-05", "dealer": "TB SP4", "tglAudit": "2026-07-27", "partNumber": "B6YH58101100", "namaPart": "COMMUNICATION CONT. UNIT ASSY", "qty": 1, "orderAmount": 371000.0, "tglAdjust": "2026-09-05", "kendala": "Claim Complete"},
+      {"no": 32, "tglPengajuan": "2026-07-06", "dealer": "TB SP4", "tglAudit": "2026-07-27", "partNumber": "B6YH58101100", "namaPart": "COMMUNICATION CONT. UNIT ASSY", "qty": 1, "orderAmount": 371000.0, "tglAdjust": "2026-09-05", "kendala": "Claim Complete"},
+      {"no": 33, "tglPengajuan": "2026-07-07", "dealer": "TB SP4", "tglAudit": "2026-07-27", "partNumber": "B6YH58101100", "namaPart": "COMMUNICATION CONT. UNIT ASSY", "qty": 1, "orderAmount": 371000.0, "tglAdjust": "2026-09-05", "kendala": "Claim Complete"},
+      {"no": 34, "tglPengajuan": "2026-07-14", "dealer": "TB SP4", "tglAudit": "2026-07-27", "partNumber": "2DPWB0730000", "namaPart": "TOOL KIT", "qty": 1, "orderAmount": 11500.0, "tglAdjust": "2026-07-29", "kendala": "Claim Complete"},
+      {"no": 35, "tglPengajuan": "2026-07-10", "dealer": "TB SP4", "tglAudit": "2026-07-27", "partNumber": "2PVF74110000", "namaPart": "FOOTREST 1 (2PV1)", "qty": 1, "orderAmount": 166000.0, "tglAdjust": "2026-07-29", "kendala": "Claim Complete"},
+      {"no": 36, "tglPengajuan": "2026-07-10", "dealer": "TB SP4", "tglAudit": "2026-07-27", "partNumber": "BPAH594A1000", "namaPart": "STARTER GEN. CONT. UNIT ASSY", "qty": 1, "orderAmount": 2265500.0, "tglAdjust": "", "kendala": "Verifikasi Part"},
+      {"no": 37, "tglPengajuan": "2025-11-11", "dealer": "TB SP4", "tglAudit": "2026-07-27", "partNumber": "BN1H21000000", "namaPart": "BATTERY ASSY YTZ6V", "qty": 1, "orderAmount": 305500.0, "tglAdjust": "", "kendala": "Sudah Diinput, Menunggu Diadjust"},
+      {"no": 38, "tglPengajuan": "2026-06-20", "dealer": "TB LAG", "tglAudit": "2026-08-03", "partNumber": "2DPWB0730000", "namaPart": "TOOL KIT", "qty": 1, "orderAmount": 11500.0, "tglAdjust": "", "kendala": "Sudah Diinput, Menunggu Diadjust"},
+      {"no": 39, "tglPengajuan": "2026-06-23", "dealer": "TB LAG", "tglAudit": "2026-08-03", "partNumber": "2DPWB0730000", "namaPart": "TOOL KIT", "qty": 1, "orderAmount": 11500.0, "tglAdjust": "", "kendala": "Sudah Diinput, Menunggu Diadjust"},
+      {"no": 40, "tglPengajuan": "2026-07-30", "dealer": "TB LBB", "tglAudit": "2026-08-31", "partNumber": "BN1H21000000", "namaPart": "BATTERY ASSY YTZ6V", "qty": 1, "orderAmount": 305500.0, "tglAdjust": "", "kendala": "Sudah Diinput, Menunggu Diadjust"},
+      {"no": 41, "tglPengajuan": "2026-07-30", "dealer": "TB LBB", "tglAudit": "2026-08-31", "partNumber": "B6YH58101000", "namaPart": "COMMUNICATION CONT. UNIT ASSY", "qty": 1, "orderAmount": 371000.0, "tglAdjust": "2026-09-05", "kendala": "Claim Complete"},
+      {"no": 42, "tglPengajuan": "2026-07-30", "dealer": "TB LBB", "tglAudit": "2026-08-31", "partNumber": "B6YH58101000", "namaPart": "COMMUNICATION CONT. UNIT ASSY", "qty": 1, "orderAmount": 371000.0, "tglAdjust": "2026-10-14", "kendala": "Claim Complete"},
+      {"no": 43, "tglPengajuan": "2026-03-10", "dealer": "TB LSK", "tglAudit": "2026-09-07", "partNumber": "BPAH35100000", "namaPart": "SPEEDOMETER ASSY", "qty": 1, "orderAmount": 1677500.0, "tglAdjust": "", "kendala": "Dokumen Kurang"},
+      {"no": 44, "tglPengajuan": "2026-08-04", "dealer": "TB KBR", "tglAudit": "2026-10-26", "partNumber": "90793AJ82100", "namaPart": "YAMALUBE FRONT FORK OIL G-10", "qty": 1, "orderAmount": 22500.0, "tglAdjust": "", "kendala": "Verifikasi Part"},
+      {"no": 45, "tglPengajuan": "2026-08-04", "dealer": "TB KBR", "tglAudit": "2026-10-26", "partNumber": "3AYF31450000", "namaPart": "OIL SEAL (T105)", "qty": 1, "orderAmount": 15000.0, "tglAdjust": "", "kendala": "Verifikasi Part"},
+      {"no": 46, "tglPengajuan": "2026-08-04", "dealer": "TB KBR", "tglAudit": "2026-10-26", "partNumber": "B65F31100000", "namaPart": "INNER TUBE COMP.1 (B651)", "qty": 1, "orderAmount": 327500.0, "tglAdjust": "", "kendala": "Verifikasi Part"},
+      {"no": 47, "tglPengajuan": "2026-08-04", "dealer": "TB KBR", "tglAudit": "2026-10-26", "partNumber": "2PVH43102000", "namaPart": "HEADLIGHT UNIT ASSY (2PV9)", "qty": 1, "orderAmount": 1048000.0, "tglAdjust": "", "kendala": "Verifikasi Part"},
+      {"no": 48, "tglPengajuan": "2026-08-28", "dealer": "TB SLK", "tglAudit": "2026-11-02", "partNumber": "54PE21190000", "namaPart": "SEAL, VALVE STEM (54P1)", "qty": 2, "orderAmount": 31000.0, "tglAdjust": "2026-11-04", "kendala": "Claim Complete"},
+      {"no": 49, "tglPengajuan": "2026-10-13", "dealer": "TB SLK", "tglAudit": "2026-11-02", "partNumber": "BEJE21700000", "namaPart": "CAMSHAFT ASSY 1 (BEJ1)", "qty": 1, "orderAmount": 343000.0, "tglAdjust": "", "kendala": "Sudah Diinput, Menunggu Diadjust"},
+      {"no": 50, "tglPengajuan": "2025-11-17", "dealer": "TB SLK", "tglAudit": "2026-11-02", "partNumber": "BN1H21000000", "namaPart": "BATTERY ASSY YTZ6V", "qty": 1, "orderAmount": 305500.0, "tglAdjust": "", "kendala": "Verifikasi Part"},
+      {"no": 51, "tglPengajuan": "2025-07-29", "dealer": "TB SLK", "tglAudit": "2026-11-02", "partNumber": "BN1H21000000", "namaPart": "BATTERY ASSY YTZ6V", "qty": 1, "orderAmount": 305500.0, "tglAdjust": "", "kendala": "Verifikasi Part"},
+      {"no": 52, "tglPengajuan": "2025-08-13", "dealer": "TB SLK", "tglAudit": "2026-11-02", "partNumber": "BN1H21000000", "namaPart": "BATTERY ASSY YTZ6V", "qty": 1, "orderAmount": 305500.0, "tglAdjust": "", "kendala": "Verifikasi Part"},
+      {"no": 53, "tglPengajuan": "2025-12-09", "dealer": "TB SLK", "tglAudit": "2026-11-02", "partNumber": "BN1H21000000", "namaPart": "BATTERY ASSY YTZ6V", "qty": 1, "orderAmount": 305500.0, "tglAdjust": "", "kendala": "Verifikasi Part"},
+      {"no": 54, "tglPengajuan": "2026-07-21", "dealer": "TB SLK", "tglAudit": "2026-11-02", "partNumber": "BN1H21000000", "namaPart": "BATTERY ASSY YTZ6V", "qty": 1, "orderAmount": 305500.0, "tglAdjust": "", "kendala": "Verifikasi Part"},
+      {"no": 55, "tglPengajuan": "2026-07-21", "dealer": "TB SLK", "tglAudit": "2026-11-02", "partNumber": "BPAF22100000", "namaPart": "SHOCK ABSORBER ASSY, REAR", "qty": 1, "orderAmount": 727500.0, "tglAdjust": "2026-11-04", "kendala": "Claim Complete"},
+      {"no": 56, "tglPengajuan": "2026-07-13", "dealer": "TB SLK", "tglAudit": "2026-11-02", "partNumber": "B3FF22100000", "namaPart": "SHOCK ABSORBER ASSY, REAR (B3F1)", "qty": 1, "orderAmount": 280000.0, "tglAdjust": "2026-11-04", "kendala": "Claim Complete"},
+      {"no": 57, "tglPengajuan": "2026-07-31", "dealer": "TB SLK", "tglAudit": "2026-11-02", "partNumber": "BPAH594A2000", "namaPart": "STARTER GEN. CONT. UNIT ASSY", "qty": 1, "orderAmount": 2265500.0, "tglAdjust": "2026-11-04", "kendala": "Claim Complete"},
+      {"no": 58, "tglPengajuan": "2026-08-03", "dealer": "TB SLK", "tglAudit": "2026-11-02", "partNumber": "BTEH594A2000", "namaPart": "STARTER GEN. CONT. UNIT ASSY", "qty": 1, "orderAmount": 2199500.0, "tglAdjust": "2026-11-04", "kendala": "Claim Complete"},
+      {"no": 59, "tglPengajuan": "2026-07-28", "dealer": "TB SLK", "tglAudit": "2026-11-02", "partNumber": "B8AE39070000", "namaPart": "FUEL PUMP COMP.", "qty": 1, "orderAmount": 799500.0, "tglAdjust": "", "kendala": "Sudah Diinput, Menunggu Diadjust"},
+      {"no": 60, "tglPengajuan": "2026-08-07", "dealer": "TB SLK", "tglAudit": "2026-11-02", "partNumber": "B8AE39070000", "namaPart": "FUEL PUMP COMP.", "qty": 1, "orderAmount": 799500.0, "tglAdjust": "2026-11-04", "kendala": "Claim Complete"},
+      {"no": 61, "tglPengajuan": "2026-05-19", "dealer": "TB PPJ", "tglAudit": "2026-11-04", "partNumber": "B3FE39070100", "namaPart": "FUEL PUMP COMP. (B3F1)", "qty": 1, "orderAmount": 795500.0, "tglAdjust": "", "kendala": "Verifikasi Part"}
+    ];
+
+    const INITIAL_DEALERS = [
+      "SY", "TB PRO", "TB PDK", "TB ADS", "TB LBG", "TB BDB", "TB STB", "TB BLB", "TB TBG",
+      "TB LBB", "TB LAG", "TB SCC", "TB PRM", "TB KNL", "TB SP4", "TB LSK", "TB PPJ", "TB PDL",
+      "TB BSK", "TB SHT", "TB PYK", "TB TJP", "TB SLK", "TB SPR", "TB SBG", "TB PPU", "TB KBR",
+      "TB SRB", "TB MLB", "TB SGR", "TB PNN", "TB SRT", "TB AHJ", "TB LNG"
+    ];
+
+    const STANDARD_KENDALA_LIST = [
+      "Claim Complete",
+      "Verifikasi Part",
+      "Sudah Diinput, Menunggu Diadjust",
+      "Dokumen Kurang",
+      "Form Claim Tidak Lengkap",
+      "Salah kirim form claim, petugas claim tidak follow up ke dealer"
+    ];
+
+    // LocalStorage Keys
+    const STORAGE_KEYS = {
+      CLAIMS: 'audit_claim_records_v1',
+      DEALERS: 'audit_claim_dealers_v1',
+      PARTS: 'audit_claim_parts_v1'
+    };
+
+    // Application State
+    let claimsData = [];
+    let dealersMaster = [];
+    let partsMaster = [];
+    let dealerRecapMode = 'active'; // 'active' or 'all'
+    let dealerChartInstance = null;
+    let kendalaChartInstance = null;
+
+    // 2. INITIALIZATION & STORAGE MANAGEMENT
+    function loadAppState() {
+      try {
+        const savedClaims = localStorage.getItem(STORAGE_KEYS.CLAIMS);
+        const savedDealers = localStorage.getItem(STORAGE_KEYS.DEALERS);
+        const savedParts = localStorage.getItem(STORAGE_KEYS.PARTS);
+
+        claimsData = savedClaims ? JSON.parse(savedClaims) : JSON.parse(JSON.stringify(INITIAL_CLAIMS_DATA));
+        dealersMaster = savedDealers ? JSON.parse(savedDealers) : [...INITIAL_DEALERS];
+
+        if (savedParts) {
+          partsMaster = JSON.parse(savedParts);
+        } else {
+          partsMaster = buildDefaultPartsCatalog(claimsData);
+        }
+        saveAppState();
+      } catch (e) {
+        console.error("Gagal memuat state dari localStorage:", e);
+        claimsData = JSON.parse(JSON.stringify(INITIAL_CLAIMS_DATA));
+        dealersMaster = [...INITIAL_DEALERS];
+        partsMaster = buildDefaultPartsCatalog(claimsData);
+      }
+    }
+
+    function saveAppState() {
+      try {
+        localStorage.setItem(STORAGE_KEYS.CLAIMS, JSON.stringify(claimsData));
+        localStorage.setItem(STORAGE_KEYS.DEALERS, JSON.stringify(dealersMaster));
+        localStorage.setItem(STORAGE_KEYS.PARTS, JSON.stringify(partsMaster));
+      } catch (e) {
+        console.error("Gagal menyimpan ke localStorage:", e);
+      }
+    }
+
+    function buildDefaultPartsCatalog(dataList) {
+      const map = new Map();
+      dataList.forEach(item => {
+        const pn = (item.partNumber || "").trim().toUpperCase();
+        if (pn && !map.has(pn)) {
+          const unitPrice = item.qty > 0 ? Math.round((item.orderAmount / item.qty) * 100) / 100 : item.orderAmount;
+          map.set(pn, {
+            partNumber: pn,
+            namaPart: (item.namaPart || "").trim().toUpperCase(),
+            unitPrice: unitPrice
+          });
+        }
+      });
+      return Array.from(map.values()).sort((a, b) => a.partNumber.localeCompare(b.partNumber));
+    }
+
+    // 3. CORE CALCULATION FORMULAS (SESUAI RUMUS EXCEL ASLI)
+    function getTodayISO() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function calculateStatus(tglAdjust) {
+      return (tglAdjust && String(tglAdjust).trim() !== "") ? "Adjusted" : "Not Adjusted";
+    }
+
+    function calculateLeadTime(tglPengajuan, tglAdjust) {
+      if (!tglPengajuan) return 0;
+      const start = new Date(tglPengajuan + "T00:00:00");
+      const endStr = (tglAdjust && String(tglAdjust).trim() !== "") ? tglAdjust : getTodayISO();
+      const end = new Date(endStr + "T00:00:00");
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
+      const diffMs = end.getTime() - start.getTime();
+      return Math.round(diffMs / (1000 * 60 * 60 * 24));
+    }
+
+    function enrichClaimRecord(item) {
+      const status = calculateStatus(item.tglAdjust);
+      const leadTime = calculateLeadTime(item.tglPengajuan, item.tglAdjust);
+      return {
+        ...item,
+        status,
+        leadTime
+      };
+    }
+
+    // Formatting Helpers
+    function formatRupiah(num) {
+      const val = Math.round(Number(num) || 0);
+      return "Rp " + val.toLocaleString("id-ID");
+    }
+
+    function formatDateDisplay(isoStr) {
+      if (!isoStr || String(isoStr).trim() === "") return "-";
+      const parts = isoStr.split("-");
+      if (parts.length !== 3) return isoStr;
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    // 4. NAVIGATION & TAB SWITCHING
+    function switchTab(tabName) {
+      const tabs = ['dashboard', 'claims', 'master'];
+      tabs.forEach(t => {
+        const viewEl = document.getElementById(`view-${t}`);
+        const btnEl = document.getElementById(`tab-btn-${t}`);
+        if (t === tabName) {
+          viewEl.classList.remove('hidden');
+          btnEl.classList.remove('text-slate-600', 'hover:bg-slate-100', 'font-medium');
+          btnEl.classList.add('bg-indigo-50', 'text-indigo-700', 'font-semibold');
+        } else {
+          viewEl.classList.add('hidden');
+          btnEl.classList.remove('bg-indigo-50', 'text-indigo-700', 'font-semibold');
+          btnEl.classList.add('text-slate-600', 'hover:bg-slate-100', 'font-medium');
+        }
+      });
+
+      if (tabName === 'dashboard') {
+        renderDashboard();
+      } else if (tabName === 'claims') {
+        populateClaimFilterDropdowns();
+        renderClaimsTable();
+      } else if (tabName === 'master') {
+        renderMasterTables();
+      }
+      lucide.createIcons();
+    }
+
+    // 5. DASHBOARD RENDERING (KPI, CHARTS & RECAP TABLES)
+    function renderDashboard() {
+      const enriched = claimsData.map(enrichClaimRecord);
+
+      // KPI Calculations
+      const totalPengajuan = enriched.length;
+      const belumAdjust = enriched.filter(c => c.status === "Not Adjusted").length;
+      const sudahAdjust = enriched.filter(c => c.status === "Adjusted").length;
+      const totalPart = enriched.reduce((sum, c) => sum + (Number(c.qty) || 0), 0);
+      const nilaiClaim = enriched.reduce((sum, c) => sum + (Number(c.orderAmount) || 0), 0);
+      const totalLeadTime = enriched.reduce((sum, c) => sum + c.leadTime, 0);
+      const avgLeadTime = totalPengajuan > 0 ? (totalLeadTime / totalPengajuan).toFixed(1) : "0.0";
+
+      const belumPct = totalPengajuan > 0 ? ((belumAdjust / totalPengajuan) * 100).toFixed(1) : "0.0";
+      const sudahPct = totalPengajuan > 0 ? ((sudahAdjust / totalPengajuan) * 100).toFixed(1) : "0.0";
+
+      // Update DOM KPIs
+      document.getElementById('kpi-total-pengajuan').textContent = totalPengajuan;
+      document.getElementById('badge-total-claims').textContent = totalPengajuan;
+      document.getElementById('kpi-belum-adjust').textContent = belumAdjust;
+      document.getElementById('kpi-belum-pct').textContent = `(${belumPct}%)`;
+      document.getElementById('kpi-sudah-adjust').textContent = sudahAdjust;
+      document.getElementById('kpi-sudah-pct').textContent = `(${sudahPct}%)`;
+      document.getElementById('kpi-total-part').textContent = totalPart;
+      document.getElementById('kpi-nilai-claim').textContent = formatRupiah(nilaiClaim);
+      document.getElementById('kpi-avg-leadtime').textContent = avgLeadTime;
+
+      // Aggregate per Dealer
+      const allDealerCodes = Array.from(new Set([...dealersMaster, ...enriched.map(c => c.dealer)]));
+      const dealerStats = allDealerCodes.map(dealer => {
+        const rows = enriched.filter(c => c.dealer === dealer);
+        return {
+          dealer,
+          count: rows.length,
+          partQty: rows.reduce((s, r) => s + (Number(r.qty) || 0), 0),
+          amount: rows.reduce((s, r) => s + (Number(r.orderAmount) || 0), 0),
+          unadjusted: rows.filter(r => r.status === "Not Adjusted").length
+        };
+      });
+
+      const activeDealerStats = dealerStats
+        .filter(d => d.count > 0)
+        .sort((a, b) => b.amount - a.amount);
+
+      const displayDealerStats = dealerRecapMode === 'active'
+        ? activeDealerStats
+        : dealerStats.sort((a, b) => b.amount - a.amount || a.dealer.localeCompare(b.dealer));
+
+      // Render Dealer Recap Table
+      const dealerTbody = document.getElementById('recap-dealer-tbody');
+      dealerTbody.innerHTML = displayDealerStats.map(d => `
+        <tr onclick="drillDownDealer('${d.dealer}')" class="hover:bg-indigo-50/60 transition cursor-pointer ${d.count === 0 ? 'opacity-50' : ''}">
+          <td class="py-2.5 px-4 font-semibold text-slate-800 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full ${d.unadjusted > 0 ? 'bg-amber-500' : (d.count > 0 ? 'bg-emerald-500' : 'bg-slate-300')}"></span>
+            <span>${d.dealer}</span>
+          </td>
+          <td class="py-2.5 px-4 text-right font-medium text-slate-700">${d.partQty}</td>
+          <td class="py-2.5 px-4 text-right font-semibold text-slate-900">${formatRupiah(d.amount)}</td>
+          <td class="py-2.5 px-4 text-center">
+            ${d.unadjusted > 0 
+              ? `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">${d.unadjusted}</span>`
+              : `<span class="text-xs text-slate-400">0</span>`
+            }
+          </td>
+        </tr>
+      `).join('');
+
+      document.getElementById('recap-dealer-total-part').textContent = totalPart;
+      document.getElementById('recap-dealer-total-amount').textContent = formatRupiah(nilaiClaim);
+      document.getElementById('recap-dealer-total-unadjusted').textContent = belumAdjust;
+
+      // Aggregate per Kendala
+      const kendalaSet = new Set([...STANDARD_KENDALA_LIST, ...enriched.map(c => c.kendala)]);
+      const kendalaStats = Array.from(kendalaSet).map(k => {
+        const count = enriched.filter(c => c.kendala === k).length;
+        const pct = totalPengajuan > 0 ? ((count / totalPengajuan) * 100).toFixed(1) : "0.0";
+        return { kendala: k, count, pct };
+      }).sort((a, b) => b.count - a.count);
+
+      const kendalaTbody = document.getElementById('recap-kendala-tbody');
+      kendalaTbody.innerHTML = kendalaStats.map(k => `
+        <tr onclick="drillDownKendala('${k.kendala.replace(/'/g, "\\'")}')" class="hover:bg-indigo-50/60 transition cursor-pointer ${k.count === 0 ? 'opacity-50' : ''}">
+          <td class="py-2.5 px-4 font-medium text-slate-800">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full shrink-0 ${getKendalaColorClass(k.kendala)}"></span>
+              <span class="line-clamp-2">${k.kendala}</span>
+            </div>
+          </td>
+          <td class="py-2.5 px-4 text-right font-bold text-slate-900">${k.count}</td>
+          <td class="py-2.5 px-4 text-right text-slate-600 font-medium">${k.pct}%</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('recap-kendala-total-count').textContent = totalPengajuan;
+
+      // Render Charts
+      renderCharts(activeDealerStats, kendalaStats.filter(k => k.count > 0));
+    }
+
+    function getKendalaColorClass(kendala) {
+      if (kendala === "Claim Complete") return "bg-emerald-500";
+      if (kendala === "Verifikasi Part") return "bg-amber-500";
+      if (kendala === "Sudah Diinput, Menunggu Diadjust") return "bg-blue-500";
+      if (kendala === "Dokumen Kurang") return "bg-rose-500";
+      if (kendala === "Form Claim Tidak Lengkap") return "bg-purple-500";
+      return "bg-slate-500";
+    }
+
+    function setDealerRecapMode(mode) {
+      dealerRecapMode = mode;
+      const btnActive = document.getElementById('btn-dealer-active');
+      const btnAll = document.getElementById('btn-dealer-all');
+
+      if (mode === 'active') {
+        btnActive.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-indigo-700 shadow-xs transition cursor-pointer";
+        btnAll.className = "px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 transition cursor-pointer";
+      } else {
+        btnAll.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-indigo-700 shadow-xs transition cursor-pointer";
+        btnActive.className = "px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 transition cursor-pointer";
+      }
+      renderDashboard();
+    }
+
+    function renderCharts(activeDealerStats, activeKendalaStats) {
+      // 1. Dealer Bar + Line Chart
+      const ctxDealer = document.getElementById('dealerChart').getContext('2d');
+      if (dealerChartInstance) dealerChartInstance.destroy();
+
+      dealerChartInstance = new Chart(ctxDealer, {
+        type: 'bar',
+        data: {
+          labels: activeDealerStats.map(d => d.dealer),
+          datasets: [
+            {
+              label: 'Nilai Claim (Rp)',
+              data: activeDealerStats.map(d => Math.round(d.amount)),
+              backgroundColor: 'rgba(79, 70, 229, 0.85)',
+              borderRadius: 6,
+              yAxisID: 'y',
+              order: 2
+            },
+            {
+              label: 'Belum Adjust (Kasus)',
+              data: activeDealerStats.map(d => d.unadjusted),
+              type: 'line',
+              borderColor: '#f59e0b',
+              backgroundColor: '#f59e0b',
+              borderWidth: 2.5,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              tension: 0.25,
+              yAxisID: 'y1',
+              order: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'top', labels: { usePointStyle: true, font: { family: 'Inter', size: 11 } } },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  if (ctx.dataset.yAxisID === 'y') {
+                    return ` Nilai Claim: ${formatRupiah(ctx.raw)}`;
+                  }
+                  return ` Belum Adjust: ${ctx.raw} kasus`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 11, weight: '600' } } },
+            y: {
+              type: 'linear',
+              position: 'left',
+              beginAtZero: true,
+              ticks: {
+                font: { family: 'Inter', size: 10 },
+                callback: (val) => 'Rp ' + (val / 1000000).toFixed(1) + 'jt'
+              },
+              grid: { color: '#f1f5f9' }
+            },
+            y1: {
+              type: 'linear',
+              position: 'right',
+              beginAtZero: true,
+              grid: { drawOnChartArea: false },
+              ticks: { stepSize: 1, font: { family: 'Inter', size: 10 } }
+            }
+          }
+        }
+      });
+
+      // 2. Kendala Doughnut Chart
+      const ctxKendala = document.getElementById('kendalaChart').getContext('2d');
+      if (kendalaChartInstance) kendalaChartInstance.destroy();
+
+      const palette = ['#10b981', '#f59e0b', '#3b82f6', '#f43f5e', '#8b5cf6', '#64748b'];
+
+      kendalaChartInstance = new Chart(ctxKendala, {
+        type: 'doughnut',
+        data: {
+          labels: activeKendalaStats.map(k => k.kendala),
+          datasets: [{
+            data: activeKendalaStats.map(k => k.count),
+            backgroundColor: activeKendalaStats.map((_, idx) => palette[idx % palette.length]),
+            borderWidth: 2,
+            borderColor: '#ffffff',
+            hoverOffset: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '62%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                usePointStyle: true,
+                padding: 14,
+                font: { family: 'Inter', size: 11 }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                  const pct = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : 0;
+                  return ` ${ctx.label}: ${ctx.raw} kasus (${pct}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Drill-down helpers from Dashboard to Claims Table
+    function drillDownDealer(dealer) {
+      switchTab('claims');
+      document.getElementById('filter-dealer').value = dealer;
+      renderClaimsTable();
+    }
+
+    function drillDownKendala(kendala) {
+      switchTab('claims');
+      document.getElementById('filter-kendala').value = kendala;
+      renderClaimsTable();
+    }
+
+    function filterClaimsByStatus(status) {
+      switchTab('claims');
+      document.getElementById('filter-status').value = status;
+      renderClaimsTable();
+    }
+
+    // 6. DATA CLAIM TABLE & FILTERS
+    function populateClaimFilterDropdowns() {
+      const dealerSel = document.getElementById('filter-dealer');
+      const currentDealer = dealerSel.value;
+      const allDealers = Array.from(new Set([...dealersMaster, ...claimsData.map(c => c.dealer)])).sort();
+      dealerSel.innerHTML = `<option value="">Semua Dealer</option>` +
+        allDealers.map(d => `<option value="${d}">${d}</option>`).join('');
+      dealerSel.value = currentDealer;
+
+      const kendalaSel = document.getElementById('filter-kendala');
+      const currentKendala = kendalaSel.value;
+      const allKendala = Array.from(new Set([...STANDARD_KENDALA_LIST, ...claimsData.map(c => c.kendala)]));
+      kendalaSel.innerHTML = `<option value="">Semua Kendala</option>` +
+        allKendala.map(k => `<option value="${k}">${k}</option>`).join('');
+      kendalaSel.value = currentKendala;
+    }
+
+    function resetClaimFilters() {
+      document.getElementById('filter-search').value = '';
+      document.getElementById('filter-dealer').value = '';
+      document.getElementById('filter-status').value = '';
+      document.getElementById('filter-kendala').value = '';
+      renderClaimsTable();
+    }
+
+    function renderClaimsTable() {
+      const searchQ = document.getElementById('filter-search').value.trim().toLowerCase();
+      const dealerF = document.getElementById('filter-dealer').value;
+      const statusF = document.getElementById('filter-status').value;
+      const kendalaF = document.getElementById('filter-kendala').value;
+
+      const enriched = claimsData.map(enrichClaimRecord);
+
+      const filtered = enriched.filter(item => {
+        if (dealerF && item.dealer !== dealerF) return false;
+        if (statusF && item.status !== statusF) return false;
+        if (kendalaF && item.kendala !== kendalaF) return false;
+        if (searchQ) {
+          const hay = `${item.no} ${item.dealer} ${item.partNumber} ${item.namaPart} ${item.kendala}`.toLowerCase();
+          if (!hay.includes(searchQ)) return false;
+        }
+        return true;
+      });
+
+      // Update summary bar
+      document.getElementById('filtered-count').textContent = filtered.length;
+      document.getElementById('total-records-count').textContent = enriched.length;
+      const subAmount = filtered.reduce((s, r) => s + (Number(r.orderAmount) || 0), 0);
+      const subQty = filtered.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+      document.getElementById('filtered-amount').textContent = formatRupiah(subAmount);
+      document.getElementById('filtered-qty').textContent = subQty;
+
+      const tbody = document.getElementById('claims-tbody');
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="13" class="py-12 text-center text-slate-400">
+              <div class="flex flex-col items-center gap-2">
+                <i data-lucide="inbox" class="w-8 h-8 text-slate-300"></i>
+                <p class="text-sm font-medium text-slate-500">Tidak ada data claim yang cocok dengan filter pencarian.</p>
+              </div>
+            </td>
+          </tr>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(row => {
+        const isAdjusted = row.status === "Adjusted";
+        const statusBadge = isAdjusted
+          ? `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Adjusted</span>`
+          : `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">Not Adjusted</span>`;
+
+        const leadTimeColor = row.leadTime > 120 ? 'text-rose-600 font-bold' : (row.leadTime > 60 ? 'text-amber-600 font-semibold' : 'text-slate-700 font-medium');
+
+        return `
+          <tr class="hover:bg-slate-50/90 transition group">
+            <td class="py-3 px-3 text-center font-semibold text-slate-500">${row.no}</td>
+            <td class="py-3 px-3 text-slate-700">${formatDateDisplay(row.tglPengajuan)}</td>
+            <td class="py-3 px-3">
+              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 font-bold text-xs">${row.dealer}</span>
+            </td>
+            <td class="py-3 px-3 text-slate-600">${formatDateDisplay(row.tglAudit)}</td>
+            <td class="py-3 px-3 font-mono text-xs font-semibold text-indigo-700">${row.partNumber}</td>
+            <td class="py-3 px-3 text-slate-800 max-w-[220px] truncate" title="${row.namaPart}">${row.namaPart}</td>
+            <td class="py-3 px-3 text-center font-semibold text-slate-800">${row.qty}</td>
+            <td class="py-3 px-3 text-right font-semibold text-slate-900">${formatRupiah(row.orderAmount)}</td>
+            <td class="py-3 px-3 text-slate-700">${formatDateDisplay(row.tglAdjust)}</td>
+            <td class="py-3 px-3 text-center">${statusBadge}</td>
+            <td class="py-3 px-3 text-right ${leadTimeColor}">${row.leadTime} hr</td>
+            <td class="py-3 px-3 text-slate-700 max-w-[210px] truncate" title="${row.kendala}">
+              <span class="inline-flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full shrink-0 ${getKendalaColorClass(row.kendala)}"></span>
+                <span>${row.kendala}</span>
+              </span>
+            </td>
+            <td class="py-3 px-3 text-center sticky right-0 bg-white group-hover:bg-slate-50 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.06)]">
+              <div class="inline-flex items-center gap-1">
+                ${!isAdjusted ? `
+                  <button onclick="quickAdjustClaim(${row.no})" class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition cursor-pointer" title="Quick Adjust Hari Ini">
+                    <i data-lucide="check-circle" class="w-4 h-4"></i>
+                  </button>
+                ` : ''}
+                <button onclick="openClaimModal(${row.no})" class="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 transition cursor-pointer" title="Edit Data">
+                  <i data-lucide="pencil" class="w-4 h-4"></i>
+                </button>
+                <button onclick="confirmDeleteClaim(${row.no})" class="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition cursor-pointer" title="Hapus Data">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    // 7. INPUT & EDIT CLAIM MODAL LOGIC
+    function populateFormDatalists() {
+      const dealerDl = document.getElementById('dealer-datalist');
+      dealerDl.innerHTML = dealersMaster.map(d => `<option value="${d}">`).join('');
+
+      const partDl = document.getElementById('part-datalist');
+      partDl.innerHTML = partsMaster.map(p => `<option value="${p.partNumber}">${p.namaPart} (${formatRupiah(p.unitPrice)})</option>`).join('');
+    }
+
+    function openClaimModal(editNo = null) {
+      populateFormDatalists();
+      const modal = document.getElementById('claim-modal');
+      const titleEl = document.getElementById('claim-modal-title');
+      const form = document.getElementById('claim-form');
+      form.reset();
+
+      document.getElementById('form-kendala-custom').classList.add('hidden');
+      document.getElementById('part-catalog-hint').textContent = "Ketik part baru untuk otomatis masuk katalog";
+      document.getElementById('part-catalog-hint').className = "text-[11px] text-slate-400 mt-1";
+
+      if (editNo !== null) {
+        const record = claimsData.find(c => c.no === editNo);
+        if (!record) return;
+        titleEl.textContent = `Edit Data Claim #${record.no}`;
+        document.getElementById('form-claim-no').value = record.no;
+        document.getElementById('form-tgl-pengajuan').value = record.tglPengajuan;
+        document.getElementById('form-dealer').value = record.dealer;
+        document.getElementById('form-tgl-audit').value = record.tglAudit;
+        document.getElementById('form-part-number').value = record.partNumber;
+        document.getElementById('form-nama-part').value = record.namaPart;
+        document.getElementById('form-qty').value = record.qty;
+        document.getElementById('form-order-amount').value = record.orderAmount;
+        document.getElementById('form-tgl-adjust').value = record.tglAdjust || "";
+
+        const kendalaSelect = document.getElementById('form-kendala-select');
+        const optionExists = Array.from(kendalaSelect.options).some(opt => opt.value === record.kendala);
+        if (optionExists) {
+          kendalaSelect.value = record.kendala;
+        } else {
+          kendalaSelect.value = "__CUSTOM__";
+          const customInput = document.getElementById('form-kendala-custom');
+          customInput.value = record.kendala;
+          customInput.classList.remove('hidden');
+        }
+      } else {
+        titleEl.textContent = "Input Pengajuan Claim Baru";
+        document.getElementById('form-claim-no').value = "";
+        const today = getTodayISO();
+        document.getElementById('form-tgl-pengajuan').value = today;
+        document.getElementById('form-tgl-audit').value = today;
+        document.getElementById('form-qty').value = 1;
+        document.getElementById('form-kendala-select').value = "Sudah Diinput, Menunggu Diadjust";
+      }
+
+      updateFormPreviews();
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeClaimModal() {
+      const modal = document.getElementById('claim-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function handlePartNumberInput(val) {
+      const cleanPN = val.trim().toUpperCase();
+      const found = partsMaster.find(p => p.partNumber.toUpperCase() === cleanPN);
+      const hintEl = document.getElementById('part-catalog-hint');
+
+      if (found) {
+        document.getElementById('form-nama-part').value = found.namaPart;
+        const qty = Number(document.getElementById('form-qty').value) || 1;
+        if (found.unitPrice > 0) {
+          document.getElementById('form-order-amount').value = Math.round(found.unitPrice * qty);
+        }
+        hintEl.textContent = `✓ Ditemukan di katalog (Harga ref: ${formatRupiah(found.unitPrice)}/unit)`;
+        hintEl.className = "text-[11px] text-emerald-600 font-medium mt-1";
+      } else if (cleanPN.length > 0) {
+        hintEl.textContent = "+ Part Number baru (akan disimpan ke katalog master)";
+        hintEl.className = "text-[11px] text-indigo-600 font-medium mt-1";
+      } else {
+        hintEl.textContent = "Ketik part baru untuk otomatis masuk katalog";
+        hintEl.className = "text-[11px] text-slate-400 mt-1";
+      }
+    }
+
+    function handleQtyChange() {
+      const cleanPN = document.getElementById('form-part-number').value.trim().toUpperCase();
+      const found = partsMaster.find(p => p.partNumber.toUpperCase() === cleanPN);
+      const qty = Number(document.getElementById('form-qty').value) || 1;
+      if (found && found.unitPrice > 0) {
+        document.getElementById('form-order-amount').value = Math.round(found.unitPrice * qty);
+      }
+    }
+
+    function handleTglAdjustChange() {
+      const tglAdjust = document.getElementById('form-tgl-adjust').value;
+      const kendalaSelect = document.getElementById('form-kendala-select');
+      if (tglAdjust) {
+        kendalaSelect.value = "Claim Complete";
+        document.getElementById('form-kendala-custom').classList.add('hidden');
+      }
+      updateFormPreviews();
+    }
+
+    function handleKendalaSelectChange() {
+      const val = document.getElementById('form-kendala-select').value;
+      const customInput = document.getElementById('form-kendala-custom');
+      if (val === "__CUSTOM__") {
+        customInput.classList.remove('hidden');
+        customInput.required = true;
+        customInput.focus();
+      } else {
+        customInput.classList.add('hidden');
+        customInput.required = false;
+      }
+    }
+
+    function updateFormPreviews() {
+      const tglPengajuan = document.getElementById('form-tgl-pengajuan').value;
+      const tglAdjust = document.getElementById('form-tgl-adjust').value;
+      const status = calculateStatus(tglAdjust);
+      const leadTime = calculateLeadTime(tglPengajuan, tglAdjust);
+
+      const badge = document.getElementById('preview-status-badge');
+      if (status === "Adjusted") {
+        badge.textContent = "Adjusted";
+        badge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800";
+      } else {
+        badge.textContent = "Not Adjusted";
+        badge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800";
+      }
+
+      document.getElementById('preview-leadtime-text').textContent = `${leadTime} Hari`;
+    }
+
+    function handleClaimFormSubmit(e) {
+      e.preventDefault();
+
+      const editNoRaw = document.getElementById('form-claim-no').value;
+      const tglPengajuan = document.getElementById('form-tgl-pengajuan').value;
+      const dealer = document.getElementById('form-dealer').value.trim().toUpperCase();
+      const tglAudit = document.getElementById('form-tgl-audit').value;
+      const partNumber = document.getElementById('form-part-number').value.trim().toUpperCase();
+      const namaPart = document.getElementById('form-nama-part').value.trim().toUpperCase();
+      const qty = Math.max(1, Number(document.getElementById('form-qty').value) || 1);
+      const orderAmount = Math.max(0, Number(document.getElementById('form-order-amount').value) || 0);
+      const tglAdjust = document.getElementById('form-tgl-adjust').value || "";
+
+      const kendalaSel = document.getElementById('form-kendala-select').value;
+      const kendala = kendalaSel === "__CUSTOM__"
+        ? document.getElementById('form-kendala-custom').value.trim()
+        : kendalaSel;
+
+      // Auto-register dealer if new
+      if (dealer && !dealersMaster.includes(dealer)) {
+        dealersMaster.push(dealer);
+      }
+
+      // Auto-register or update part catalog
+      const unitPrice = qty > 0 ? Math.round((orderAmount / qty) * 100) / 100 : orderAmount;
+      const existingPartIdx = partsMaster.findIndex(p => p.partNumber === partNumber);
+      if (existingPartIdx === -1) {
+        partsMaster.push({ partNumber, namaPart, unitPrice });
+        partsMaster.sort((a, b) => a.partNumber.localeCompare(b.partNumber));
+      }
+
+      if (editNoRaw !== "") {
+        const editNo = Number(editNoRaw);
+        const idx = claimsData.findIndex(c => c.no === editNo);
+        if (idx !== -1) {
+          claimsData[idx] = {
+            no: editNo,
+            tglPengajuan,
+            dealer,
+            tglAudit,
+            partNumber,
+            namaPart,
+            qty,
+            orderAmount,
+            tglAdjust,
+            kendala
+          };
+          showToast(`Data Claim #${editNo} berhasil diperbarui.`, "success");
+        }
+      } else {
+        const nextNo = claimsData.length > 0 ? Math.max(...claimsData.map(c => c.no)) + 1 : 1;
+        claimsData.push({
+          no: nextNo,
+          tglPengajuan,
+          dealer,
+          tglAudit,
+          partNumber,
+          namaPart,
+          qty,
+          orderAmount,
+          tglAdjust,
+          kendala
+        });
+        showToast(`Pengajuan Claim baru #${nextNo} (${dealer}) berhasil ditambahkan.`, "success");
+      }
+
+      saveAppState();
+      closeClaimModal();
+      refreshAllViews();
+    }
+
+    // Quick Adjust Action
+    function quickAdjustClaim(no) {
+      const idx = claimsData.findIndex(c => c.no === no);
+      if (idx === -1) return;
+      claimsData[idx].tglAdjust = getTodayISO();
+      claimsData[idx].kendala = "Claim Complete";
+      saveAppState();
+      refreshAllViews();
+      showToast(`Claim #${no} ditandai Adjusted per hari ini.`, "success");
+    }
+
+    // Delete Claim Action
+    function confirmDeleteClaim(no) {
+      openConfirmModal(
+        `Hapus Data Claim #${no}?`,
+        `Transaksi claim #${no} akan dihapus dari daftar. Tindakan ini dapat dibatalkan dengan Reset Data Awal.`,
+        () => {
+          claimsData = claimsData.filter(c => c.no !== no);
+          saveAppState();
+          refreshAllViews();
+          showToast(`Data Claim #${no} telah dihapus.`, "info");
+        }
+      );
+    }
+
+    // 8. MASTER CATALOG MANAGEMENT (PARTS & DEALERS)
+    function renderMasterTables() {
+      const q = (document.getElementById('search-master-part')?.value || "").trim().toLowerCase();
+      const filteredParts = partsMaster.filter(p =>
+        !q || p.partNumber.toLowerCase().includes(q) || p.namaPart.toLowerCase().includes(q)
+      );
+
+      const partsTbody = document.getElementById('master-parts-tbody');
+      partsTbody.innerHTML = filteredParts.map(p => `
+        <tr class="hover:bg-slate-50">
+          <td class="py-2.5 px-4 font-mono text-xs font-bold text-indigo-700">${p.partNumber}</td>
+          <td class="py-2.5 px-4 text-slate-800 font-medium">${p.namaPart}</td>
+          <td class="py-2.5 px-4 text-right font-semibold text-slate-900">${formatRupiah(p.unitPrice)}</td>
+          <td class="py-2.5 px-4 text-center">
+            <button onclick="deleteMasterPart('${p.partNumber}')" class="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition cursor-pointer" title="Hapus Part">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </td>
+        </tr>
+      `).join('');
+
+      document.getElementById('master-dealer-count').textContent = dealersMaster.length;
+      const dealersGrid = document.getElementById('master-dealers-grid');
+      dealersGrid.innerHTML = dealersMaster.map(d => {
+        const count = claimsData.filter(c => c.dealer === d).length;
+        return `
+          <div class="flex items-center justify-between px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/70 text-xs">
+            <div>
+              <span class="font-bold text-slate-800">${d}</span>
+              <span class="text-[11px] text-slate-400 ml-1">(${count})</span>
+            </div>
+            <button onclick="deleteMasterDealer('${d}')" class="text-slate-400 hover:text-rose-600 transition cursor-pointer" title="Hapus Dealer">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function handleAddMasterPart(e) {
+      e.preventDefault();
+      const pn = document.getElementById('new-part-number').value.trim().toUpperCase();
+      const name = document.getElementById('new-part-name').value.trim().toUpperCase();
+      const price = Math.max(0, Number(document.getElementById('new-part-price').value) || 0);
+
+      const idx = partsMaster.findIndex(p => p.partNumber === pn);
+      if (idx !== -1) {
+        partsMaster[idx] = { partNumber: pn, namaPart: name, unitPrice: price };
+        showToast(`Part ${pn} berhasil diperbarui.`, "success");
+      } else {
+        partsMaster.push({ partNumber: pn, namaPart: name, unitPrice: price });
+        partsMaster.sort((a, b) => a.partNumber.localeCompare(b.partNumber));
+        showToast(`Part baru ${pn} ditambahkan ke katalog.`, "success");
+      }
+
+      e.target.reset();
+      saveAppState();
+      renderMasterTables();
+    }
+
+    function deleteMasterPart(pn) {
+      partsMaster = partsMaster.filter(p => p.partNumber !== pn);
+      saveAppState();
+      renderMasterTables();
+      showToast(`Part ${pn} dihapus dari katalog.`, "info");
+    }
+
+    function handleAddMasterDealer(e) {
+      e.preventDefault();
+      const code = document.getElementById('new-dealer-code').value.trim().toUpperCase();
+      if (!code) return;
+      if (!dealersMaster.includes(code)) {
+        dealersMaster.push(code);
+        saveAppState();
+        renderMasterTables();
+        showToast(`Dealer ${code} berhasil ditambahkan.`, "success");
+      } else {
+        showToast(`Dealer ${code} sudah terdaftar.`, "info");
+      }
+      e.target.reset();
+    }
+
+    function deleteMasterDealer(code) {
+      dealersMaster = dealersMaster.filter(d => d !== code);
+      saveAppState();
+      renderMasterTables();
+      showToast(`Dealer ${code} dihapus dari daftar master.`, "info");
+    }
+
+    // 9. EXCEL EXPORT & IMPORT (SHEETJS)
+    function exportToExcel() {
+      try {
+        const enriched = claimsData.map(enrichClaimRecord);
+        const wb = XLSX.utils.book_new();
+
+        // Sheet 1: Dashboard Summary
+        const totalPengajuan = enriched.length;
+        const belumAdjust = enriched.filter(c => c.status === "Not Adjusted").length;
+        const sudahAdjust = enriched.filter(c => c.status === "Adjusted").length;
+        const totalPart = enriched.reduce((s, c) => s + (Number(c.qty) || 0), 0);
+        const nilaiClaim = enriched.reduce((s, c) => s + (Number(c.orderAmount) || 0), 0);
+        const avgLeadTime = totalPengajuan > 0
+          ? Number((enriched.reduce((s, c) => s + c.leadTime, 0) / totalPengajuan).toFixed(1))
+          : 0;
+
+        const dashboardRows = [
+          ["DASHBOARD AUDIT CLAIM - II26-HabelImprovement"],
+          ["Tanggal Export", getTodayISO()],
+          [],
+          ["RINGKASAN KPI UTAMA", "NILAI"],
+          ["Total Pengajuan", totalPengajuan],
+          ["Belum Adjust", belumAdjust],
+          ["Sudah Adjust", sudahAdjust],
+          ["Total Part", totalPart],
+          ["Nilai Claim (Rp)", Math.round(nilaiClaim)],
+          ["Avg. Lead Time (Hari)", avgLeadTime],
+          [],
+          ["REKAPITULASI PER DEALER", "Jumlah Part", "Nilai Claim (Rp)", "Belum Adjust"]
+        ];
+
+        const allDealerCodes = Array.from(new Set([...dealersMaster, ...enriched.map(c => c.dealer)]));
+        allDealerCodes.forEach(d => {
+          const rows = enriched.filter(c => c.dealer === d);
+          dashboardRows.push([
+            d,
+            rows.reduce((s, r) => s + (Number(r.qty) || 0), 0),
+            Math.round(rows.reduce((s, r) => s + (Number(r.orderAmount) || 0), 0)),
+            rows.filter(r => r.status === "Not Adjusted").length
+          ]);
+        });
+
+        dashboardRows.push([]);
+        dashboardRows.push(["REKAPITULASI KENDALA", "Jumlah Kasus", "Persentase (%)"]);
+        const kendalaSet = new Set([...STANDARD_KENDALA_LIST, ...enriched.map(c => c.kendala)]);
+        kendalaSet.forEach(k => {
+          const cnt = enriched.filter(c => c.kendala === k).length;
+          const pct = totalPengajuan > 0 ? Number(((cnt / totalPengajuan) * 100).toFixed(1)) : 0;
+          dashboardRows.push([k, cnt, pct]);
+        });
+
+        const wsDashboard = XLSX.utils.aoa_to_sheet(dashboardRows);
+        wsDashboard['!cols'] = [{ wch: 48 }, { wch: 18 }, { wch: 22 }, { wch: 16 }];
+        XLSX.utils.book_append_sheet(wb, wsDashboard, "Dashboard");
+
+        // Sheet 2: Data Transaksi
+        const dataSheetRows = enriched.map(r => ({
+          "No": r.no,
+          "Tanggal Pengajuan Claim": r.tglPengajuan,
+          "Dealer": r.dealer,
+          "Tanggal Audit": r.tglAudit,
+          "Part Number": r.partNumber,
+          "Nama Part": r.namaPart,
+          "Qty": Number(r.qty),
+          "Order Amount": Number(r.orderAmount),
+          "Tanggal Adjust": r.tglAdjust || "",
+          "Status": r.status,
+          "Lead Time": r.leadTime,
+          "Kendala": r.kendala
+        }));
+
+        const wsData = XLSX.utils.json_to_sheet(dataSheetRows);
+        wsData['!cols'] = [
+          { wch: 6 }, { wch: 22 }, { wch: 12 }, { wch: 15 },
+          { wch: 18 }, { wch: 34 }, { wch: 8 }, { wch: 16 },
+          { wch: 15 }, { wch: 15 }, { wch: 12 }, { wch: 42 }
+        ];
+        XLSX.utils.book_append_sheet(wb, wsData, "Data");
+
+        XLSX.writeFile(wb, `Audit_Claim_Report_${getTodayISO()}.xlsx`);
+        showToast("File Excel (.xlsx) dengan 2 sheet berhasil diunduh.", "success");
+      } catch (err) {
+        console.error(err);
+        showToast("Gagal mengekspor file Excel.", "error");
+      }
+    }
+
+    function parseExcelDateCell(val) {
+      if (!val) return "";
+      if (typeof val === "number") {
+        // Excel serial date
+        const dateObj = new Date(Math.round((val - 25569) * 86400 * 1000));
+        if (!isNaN(dateObj.getTime())) {
+          return dateObj.toISOString().split("T")[0];
+        }
+      }
+      const str = String(val).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+      const d = new Date(str);
+      if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
+      return "";
+    }
+
+    function handleExcelImport(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames.includes("Data") ? "Data" : workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+          const imported = [];
+          rawRows.forEach((row, index) => {
+            const dealer = String(row["Dealer"] || row["DEALER"] || "").trim().toUpperCase();
+            const partNumber = String(row["Part Number"] || row["PART NUMBER"] || "").trim().toUpperCase();
+            if (!dealer && !partNumber) return;
+
+            imported.push({
+              no: Number(row["No"]) || (index + 1),
+              tglPengajuan: parseExcelDateCell(row["Tanggal Pengajuan Claim"] || row["Tgl Pengajuan"]),
+              dealer,
+              tglAudit: parseExcelDateCell(row["Tanggal Audit"] || row["Tgl Audit"]),
+              partNumber,
+              namaPart: String(row["Nama Part"] || row["NAMA PART"] || "").trim().toUpperCase(),
+              qty: Number(row["Qty"]) || 1,
+              orderAmount: Number(row["Order Amount"]) || 0,
+              tglAdjust: parseExcelDateCell(row["Tanggal Adjust"] || row["Tgl Adjust"]),
+              kendala: String(row["Kendala"] || "Verifikasi Part").trim()
+            });
+          });
+
+          if (imported.length === 0) {
+            showToast("Format kolom Excel tidak sesuai atau data kosong.", "error");
+            return;
+          }
+
+          claimsData = imported;
+          // Merge new dealers & parts
+          imported.forEach(item => {
+            if (item.dealer && !dealersMaster.includes(item.dealer)) {
+              dealersMaster.push(item.dealer);
+            }
+          });
+          const newCatalog = buildDefaultPartsCatalog(imported);
+          newCatalog.forEach(np => {
+            if (!partsMaster.some(p => p.partNumber === np.partNumber)) {
+              partsMaster.push(np);
+            }
+          });
+
+          saveAppState();
+          refreshAllViews();
+          showToast(`Berhasil mengimpor ${imported.length} transaksi dari file Excel!`, "success");
+        } catch (err) {
+          console.error(err);
+          showToast("Terjadi kesalahan saat membaca file Excel.", "error");
+        } finally {
+          event.target.value = "";
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // 10. RESET DATA & CONFIRMATION MODAL
+    let pendingConfirmCallback = null;
+
+    function openConfirmModal(title, desc, callback) {
+      document.getElementById('confirm-modal-title').textContent = title;
+      document.getElementById('confirm-modal-desc').textContent = desc;
+      pendingConfirmCallback = callback;
+      const modal = document.getElementById('confirm-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeConfirmModal() {
+      const modal = document.getElementById('confirm-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      pendingConfirmCallback = null;
+    }
+
+    document.getElementById('confirm-modal-action-btn').addEventListener('click', () => {
+      if (typeof pendingConfirmCallback === 'function') {
+        pendingConfirmCallback();
+      }
+      closeConfirmModal();
+    });
+
+    function openResetConfirmModal() {
+      openConfirmModal(
+        "Reset ke 61 Data Awal?",
+        "Semua perubahan atau input data baru akan dihapus dan dikembalikan ke dataset awal file II26-HabelImprovement.xlsx.",
+        () => {
+          localStorage.removeItem(STORAGE_KEYS.CLAIMS);
+          localStorage.removeItem(STORAGE_KEYS.DEALERS);
+          localStorage.removeItem(STORAGE_KEYS.PARTS);
+          loadAppState();
+          refreshAllViews();
+          showToast("Data berhasil dikembalikan ke 61 transaksi awal.", "info");
+        }
+      );
+    }
+
+    // 11. TOAST NOTIFICATION SYSTEM
+    function showToast(message, type = "info") {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+
+      const styles = {
+        success: "bg-emerald-900 text-white border-emerald-700",
+        error: "bg-rose-900 text-white border-rose-700",
+        info: "bg-slate-900 text-white border-slate-700"
+      };
+
+      const icons = {
+        success: "check-circle-2",
+        error: "alert-circle",
+        info: "info"
+      };
+
+      toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-lg text-xs sm:text-sm font-medium transition-all duration-300 translate-y-2 opacity-0 ${styles[type] || styles.info}`;
+      toast.innerHTML = `
+        <i data-lucide="${icons[type] || 'info'}" class="w-4 h-4 shrink-0"></i>
+        <span class="flex-1">${message}</span>
+      `;
+
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // 12. GLOBAL REFRESH & BOOTSTRAP
+    function refreshAllViews() {
+      renderDashboard();
+      populateClaimFilterDropdowns();
+      renderClaimsTable();
+      renderMasterTables();
+      lucide.createIcons();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadAppState();
+      refreshAllViews();
+    });
+  </script>
+</body>
+</html>
